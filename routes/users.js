@@ -16,6 +16,21 @@ router.post("/login", (req, res) => userController.loginUser(req.body).then(resu
 router.get("/details", auth.verify, (req, res) => {
     const sessionData = auth.decode(req.headers.authorization);
     userController.getProfile(sessionData).then(result => res.status(result.statusCode).send(result.response));
-})
+});
+
+router.patch("/changepassword", auth.verify, (req, res) => {
+    const sessionData = auth.decode(req.headers.authorization);
+    userController.changePassword(sessionData, req.body).then(result => res.status(result.statusCode).send(result.response));
+});
+
+// Route for setting user as admin.
+router.patch("/:id/setasadmin", auth.verify, (req, res) => {
+    const sessionData = auth.decode(req.headers.authorization);
+    const userData = {
+        changeToAdminId: req.params.id,
+        sessionUserId: sessionData.id
+    };
+    userController.setAdminPrivileges(userData).then(result => res.status(result.statusCode).send(result.response));
+});
 
 module.exports = router;
