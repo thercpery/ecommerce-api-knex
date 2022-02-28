@@ -37,6 +37,23 @@ exports.up = function(knex) {
         table.float("product_price").notNullable();
         table.timestamp("created_at").defaultTo(knex.fn.now());
         table.timestamp("updated_at").defaultTo(knex.fn.now());
+    })
+    .createTable("user_carts", table => {
+        table.increments("id").primary();
+        table.integer("user_id").notNullable().references("id").inTable("users");
+        table.timestamp("created_at").defaultTo(knex.fn.now());
+        table.timestamp("updated_at").defaultTo(knex.fn.now());
+    })
+    .createTable("cart_items", table => {
+        table.increments("id").primary();
+        table.integer("cart_id").notNullable().references("id").inTable("user_carts");
+        table.integer("product_id").notNullable().references("id").inTable("products");
+        table.string("product_name").notNullable();
+        table.integer("product_quantity").notNullable();
+        table.float("product_price").notNullable();
+        table.float("product_subtotal").notNullable();
+        table.timestamp("created_at").defaultTo(knex.fn.now());
+        table.timestamp("updated_at").defaultTo(knex.fn.now());
     });
 };
 
@@ -46,6 +63,8 @@ exports.up = function(knex) {
  */
 exports.down = function(knex) {
     return knex.schema
+    .dropTableIfExists("cart_items")
+    .dropTableIfExists("user_carts")
     .dropTableIfExists("order_items")
     .dropTableIfExists("orders")
     .dropTableIfExists("users")

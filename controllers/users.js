@@ -136,10 +136,16 @@ module.exports.loginUser = (reqBody) => {
 */
 module.exports.getProfile = (sessionData) => {
     return knex
-    .select("id", "email", "is_admin", "created_at", "updated_at")
+    .select("users.id", "users.email", "users.is_admin", "users.created_at", "users.updated_at", "orders.*", "order_items.*")
     .from("users")
     .where({
-        id: sessionData.id
+        "users.id": sessionData.id
+    })
+    .join("orders", {
+        "orders.user_id": "users.id"
+    })
+    .join("order_items", {
+        "order_items.order_id": "orders.id"
     })
     .then((user, err) => {
         if(err){
@@ -270,4 +276,159 @@ module.exports.changePassword = (sessionData, reqBody) => {
             };
         }
     })
+};
+
+/* 
+    Add to cart
+    Business Logic:
+    1. Check if there is a cart data that contains the authenticated user's ID. If not found, create the cart instance in the database. If found, get the cart ID.
+    2. If not found, check if the item is active/in stock.
+    3. If active, add the product details and cart ID in "cart_items" table. 
+*/
+module.exports.addToCart = async (sessionData, cartItem) => {
+    let productData;
+    console.log(cartItem.quantity)
+    const isProductInStockOrExists = await knex("products")
+    .first()
+    .where({
+        id: cartItem.productId
+    })
+    .then((product, err) => {
+        if(err) return false;
+        else{
+            if(product !== undefined && product.is_active){
+                productData = product;
+                return true;
+            }
+            else return false;
+        }
+    });
+
+    const isCartCreated = await knex("user_carts")
+    .first()
+    .where({
+        user_id: sessionData.id
+    })
+    .then((cart, err) => {
+        if(err) return false;
+        else{
+            if(!sessionData.is_admin){
+                if(cart === undefined){
+                    return knex("user_carts")
+                    .insert({
+                        user_id: sessionData.id
+                    })
+                    .then((saved, err) => {
+                        if(err || saved === 0) return false;
+                        else return true;
+                    });
+                }
+                return true;
+            }
+            else return false;
+        }
+    });
+
+    const isCartItemsCreated = await knex("user_carts")
+    .first()
+    .where({
+        user_id: sessionData.id
+    })
+    .then((cart, err) => {
+        if(err) return false;
+        else{
+            if(!sessionData.is_admin){
+                if(cart !== undefined){
+                    return knex("cart_items")
+                    .first()
+                    .where({
+                        cart_id: cart.id,
+                        product_id: productData.id
+                    })
+                    .then((cartData, err) => {
+                        if(err) return false;
+                        else{
+                            if(cartData !== undefined){
+                                // If cart item exists, just increment.
+                                return knex("cart_items")
+                                .increment({
+                                    product_quantity: cartItem.quantity,
+                                    product_subtotal: cartItem.quantity * productData.price
+                                })
+                                .where({
+                                    cart_id: cart.id,
+                                    product_id: productData.id
+                                })
+                                .then((saved, err) => {
+                                    if(err || saved === 0) return false;
+                                    else return true;
+                                })
+                            }
+                            else{
+                                return knex("cart_items")
+                                .insert({
+                                    cart_id: cart.id,
+                                    product_id: productData.id,
+                                    product_name: productData.name,
+                                    product_quantity: cartItem.quantity,
+                                    product_price: productData.price,
+                                    product_subtotal: cartItem.quantity * productData.price
+                                })
+                                .then((saved, err) => {
+                                    if(err || saved === 0) return false;
+                                    else return true;
+                                })
+                            }
+                        }
+                    });
+                }
+                else return false;
+            }
+            else return false;
+        }
+    });
+
+    if(isProductInStockOrExists && isCartCreated && isCartItemsCreated) return {
+        statusCode: 201,
+        response: true
+    };
+    else return {
+        statusCode: 401,
+        response: false
+    };
+};
+
+/* 
+    View cart items
+    Business Logic:
+    1. Find the cart data that matches the authenticated user's ID.
+    2. Display all the data.
+*/
+module.exports.viewCartItems = async (sessionData) => {
+    let cartData = await knex("user_carts")
+    .first()
+    .where({
+        user_id: sessionData.id
+    })
+    .then((cart, err) => {
+        if(err || cart.length === 0) return false;
+        else return cart;
+    })
+
+    cartData.items = await knex
+    .select()
+    .from("cart_items")
+    .where({
+        cart_id: cartData.id
+    })
+    .then((items, err) => (err) ? [] : items);
+
+    if(cartData) return {
+        statusCode: 200,
+        response: cartData
+    };
+    else return {
+        statusCode: 200,
+        response: false
+    };
 };

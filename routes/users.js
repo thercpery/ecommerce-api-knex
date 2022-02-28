@@ -18,9 +18,22 @@ router.get("/details", auth.verify, (req, res) => {
     userController.getProfile(sessionData).then(result => res.status(result.statusCode).send(result.response));
 });
 
+// Route for changing password
 router.patch("/changepassword", auth.verify, (req, res) => {
     const sessionData = auth.decode(req.headers.authorization);
     userController.changePassword(sessionData, req.body).then(result => res.status(result.statusCode).send(result.response));
+});
+
+// Route for adding to cart
+router.put("/addtocart", auth.verify, (req, res) => {
+    const sessionData = auth.decode(req.headers.authorization);
+    userController.addToCart(sessionData, req.body).then(result => res.status(result.statusCode).send(result.response));
+});
+
+// Route for viewing cart items.
+router.get("/cart", auth.verify, (req, res) => {
+    const sessionData = auth.decode(req.headers.authorization);
+    userController.viewCartItems(sessionData, req.body).then(result => res.status(result.statusCode).send(result.response));
 });
 
 // Route for setting user as admin.
