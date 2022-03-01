@@ -432,3 +432,187 @@ module.exports.viewCartItems = async (sessionData) => {
         response: false
     };
 };
+
+/* 
+    Increment cart items
+    Business Logic:
+    1. Get the product ID and authenticated user ID.
+    2. Find the product data from the cart data.
+    3. If found, increment the quantity and amount.
+*/
+
+module.exports.incrementCartItem = async (sessionData, productId) => {
+    const product = await knex("products")
+    .first()
+    .where({
+        id: productId
+    })
+    .then((data, err) => {
+        if(err || data === undefined) return false;
+        else return data;
+    });
+
+    if(product){
+        return knex("user_carts")
+        .first()
+        .where({
+            user_id: sessionData.id
+        })
+        .then((cart, err) => {
+            if(err) return {
+                statusCode: 500,
+                response: false
+            };
+            else{
+                if(cart !== undefined){
+                    // If cart is found
+                    return knex("cart_items")
+                    .increment({
+                        product_quantity: 1,
+                        product_subtotal: product.price
+                    })
+                    .where({
+                        cart_id: cart.id,
+                        product_id: productId
+                    })
+                    .then((saved, err) => {
+                        if(err) return {
+                            statusCode: 500,
+                            response: false
+                        };
+                        else{
+                            if(saved !== 0) return {
+                                statusCode: 201,
+                                response: true
+                            };
+                            else return {
+                                statusCode: 404,
+                                response: false
+                            };
+                        }
+                    });
+                }
+                else return {
+                    // If cart is not found
+                    statusCode: 404,
+                    response: false
+                };
+            }
+        });
+    }
+    else return {
+        statusCode: 404,
+        response: false
+    };
+};
+
+/* 
+    Decrement cart item
+    Business Logic:
+    1. Get the product ID and authenticated user ID.
+    2. Find the product data from the cart data.
+    3. If found, decrement the quantity and amount if the quantity is more than 1.
+*/
+module.exports.decrementCartItem = async (sessionData, productId) => {
+    const product = await knex("products")
+    .first()
+    .where({
+        id: productId
+    })
+    .then((data, err) => {
+        if(err || data === undefined) return false;
+        else return data;
+    });
+
+    if(product){
+        return knex("user_carts")
+        .first()
+        .where({
+            user_id: sessionData.id
+        })
+        .then((cart, err) => {
+            if(err) return {
+                statusCode: 500,
+                response: false
+            };
+            else{
+                if(cart !== undefined){
+                    // If cart is found
+                    return knex("cart_items")
+                    .decrement({
+                        product_quantity: 1,
+                        product_subtotal: product.price
+                    })
+                    .where({
+                        cart_id: cart.id,
+                        product_id: productId,
+                    })
+                    .andWhere("product_quantity", ">", 1)
+                    .then((saved, err) => {
+                        if(err) return {
+                            statusCode: 500,
+                            response: false
+                        };
+                        else{
+                            if(saved !== 0) return {
+                                statusCode: 201,
+                                response: true
+                            };
+                            else return {
+                                statusCode: 404,
+                                response: false
+                            };
+                        }
+                    });
+                }
+                else return {
+                    statusCode: 404,
+                    response: false
+                };
+            }
+        });
+    }
+    else return {
+        statusCode: 404,
+        response: false
+    };
+};
+
+/* 
+    Remove item in cart
+    Business Logic:
+    1. Get the product ID and authenticated user ID.
+    2. Find the product data from the cart data.
+    3. If found, remove the product data from the "cart_items" table
+*/
+module.exports.removeItemInCart = (sessionData, productId) => {
+    return knex("user_carts")
+    .first()
+    .where({
+        user_id: sessionData.id
+    })
+    .then((cart, err) => {
+        if(err) return {
+            statusCode: 500,
+            response: false
+        };
+        else{
+            return knex("cart_items")
+            .del()
+            .where({
+                product_id: productId,
+                cart_id: cart.id
+            })
+            .then((deleted, err) => {
+                if(err || deleted === 0) return {
+                    statusCode: 500,
+                    response: false
+                };
+                else return{
+                    statusCode: 200,
+                    response: true
+                };
+            })
+        }
+    });
+};

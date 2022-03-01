@@ -35,6 +35,7 @@ exports.up = function(knex) {
         table.string("product_name").notNullable();
         table.integer("product_quantity").notNullable();
         table.float("product_price").notNullable();
+        table.float("product_subtotal").notNullable();
         table.timestamp("created_at").defaultTo(knex.fn.now());
         table.timestamp("updated_at").defaultTo(knex.fn.now());
     })

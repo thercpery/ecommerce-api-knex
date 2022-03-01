@@ -8,6 +8,7 @@ const auth = require("../auth");
     2. Return the data.
 */
 module.exports.viewOrdersFromUser = async (sessionData) => {
+    // Fill order data
     let orderData = await knex
     .select()
     .from("orders")
@@ -18,15 +19,24 @@ module.exports.viewOrdersFromUser = async (sessionData) => {
         if(err) return false;
         else return orders;
     });
-    orderData.map( order => {
-        order.items = knex
-        .select()
-        .from("order_items")
-        .where({
-            order_id: order.id
-        })
-        .then((items, err) => (err) ? [] : items);
+
+    // Fill order items
+    let orderItems = await knex
+    .select("id", "order_id", "product_id", "product_name", "product_quantity", "product_price", "product_subtotal")
+    .from("order_items")
+    .then((items, err) => {
+        if(err) return false;
+        else return items;
     });
+
+    // Iterate all items
+    orderData.map(order => {
+        order.items = [];
+        orderItems.map(item => {
+            if(item.order_id === order.id) order.items.push(item);
+        });
+    });
+
     return {
         statusCode: 200,
         response: orderData
@@ -94,7 +104,8 @@ module.exports.orderProduct = async (sessionData, orderItems) => {
                             product_id: productData.id,
                             product_name: productData.name,
                             product_quantity: orderItems.quantity,
-                            product_price: productData.price
+                            product_price: productData.price,
+                            product_subtotal: orderItems.quantity * productData.price
                         })
                         .then((saved, err) => {
                             if(err || saved === 0) return false;
@@ -134,26 +145,37 @@ module.exports.orderProduct = async (sessionData, orderItems) => {
     2. If it is an admin, return all the order data.
 */
 module.exports.viewAllOrders = async (sessionData) => {
-    return knex
+    if(!sessionData.is_admin) return {
+        statusCode: 500,
+        response: false
+    };
+    
+    let orderData = await knex
     .select()
     .from("orders")
-    .join("order_items", {
-        "order_items.order_id": "orders.id"
-    })
     .then((orders, err) => {
-        if(err) return {
-            statusCode: 500,
-            response: false
-        };
-        else{
-            if(sessionData.is_admin) return {
-                statusCode: 200,
-                response: orders
-            };
-            else return {
-                statusCode: 401,
-                response: false
-            };
-        }
+        if(err) return false;
+        else return orders;
     });
+
+    let orderItems = await knex
+    .select("id", "order_id", "product_id", "product_name", "product_quantity", "product_price", "product_subtotal")
+    .from("order_items")
+    .then((items, err) => {
+        if(err) return false;
+        else return items;
+    });
+
+    orderData.map(order => {
+        order.items = [];
+        orderItems.map(item => {
+            if(item.order_id === order.id) order.items.push(item);
+        });
+    });
+
+    
+    return {
+        statusCode: 200,
+        response: orderData
+    };
 };

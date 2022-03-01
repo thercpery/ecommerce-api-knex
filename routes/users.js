@@ -36,6 +36,24 @@ router.get("/cart", auth.verify, (req, res) => {
     userController.viewCartItems(sessionData, req.body).then(result => res.status(result.statusCode).send(result.response));
 });
 
+// Route for incrementing cart item
+router.put("/cart/:id/increment", auth.verify, (req, res) => {
+    const sessionData = auth.decode(req.headers.authorization);
+    userController.incrementCartItem(sessionData, req.params.id).then(result => res.status(result.statusCode).send(result.response));
+});
+
+// Route for decrementing cart item
+router.put("/cart/:id/decrement", auth.verify, (req, res) => {
+    const sessionData = auth.decode(req.headers.authorization);
+    userController.decrementCartItem(sessionData, req.params.id).then(result => res.status(result.statusCode).send(result.response));
+});
+
+// Route for deleting a cart item
+router.delete("/cart/:id/remove", auth.verify, (req, res) => {
+    const sessionData = auth.decode(req.headers.authorization);
+    userController.removeItemInCart(sessionData, req.params.id).then(result => res.status(result.statusCode).send(result.response));
+});
+
 // Route for setting user as admin.
 router.patch("/:id/setasadmin", auth.verify, (req, res) => {
     const sessionData = auth.decode(req.headers.authorization);
