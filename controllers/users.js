@@ -287,7 +287,6 @@ module.exports.changePassword = (sessionData, reqBody) => {
 */
 module.exports.addToCart = async (sessionData, cartItem) => {
     let productData;
-    console.log(cartItem.quantity)
     const isProductInStockOrExists = await knex("products")
     .first()
     .where({
@@ -314,8 +313,24 @@ module.exports.addToCart = async (sessionData, cartItem) => {
         else{
             if(!sessionData.is_admin){
                 if(cart === undefined){
+                    // If cart does not exist
                     return knex("user_carts")
                     .insert({
+                        user_id: sessionData.id,
+                        total_amount: cartItem.quantity * productData.price
+                    })
+                    .then((saved, err) => {
+                        if(err || saved === 0) return false;
+                        else return true;
+                    });
+                }
+                else{
+                    // If cart exist, then just increment the total amount
+                    return knex("user_carts")
+                    .increment({
+                        total_amount: cartItem.quantity * productData.price
+                    })
+                    .where({
                         user_id: sessionData.id
                     })
                     .then((saved, err) => {
@@ -323,7 +338,6 @@ module.exports.addToCart = async (sessionData, cartItem) => {
                         else return true;
                     });
                 }
-                return true;
             }
             else return false;
         }
@@ -349,7 +363,7 @@ module.exports.addToCart = async (sessionData, cartItem) => {
                         if(err) return false;
                         else{
                             if(cartData !== undefined){
-                                // If cart item exists, just increment.
+                                // If cart item exists, just increment the quantity and the product subtotal.
                                 return knex("cart_items")
                                 .increment({
                                     product_quantity: cartItem.quantity,
@@ -405,32 +419,49 @@ module.exports.addToCart = async (sessionData, cartItem) => {
     2. Display all the data.
 */
 module.exports.viewCartItems = async (sessionData) => {
-    let cartData = await knex("user_carts")
+    const isCartEmpty = await knex("user_carts")
     .first()
     .where({
         user_id: sessionData.id
     })
     .then((cart, err) => {
-        if(err || cart.length === 0) return false;
-        else return cart;
-    })
+        if(err || cart === undefined) return true;
+        else return false;
+    });
 
-    cartData.items = await knex
-    .select()
-    .from("cart_items")
-    .where({
-        cart_id: cartData.id
-    })
-    .then((items, err) => (err) ? [] : items);
-
-    if(cartData) return {
-        statusCode: 200,
-        response: cartData
-    };
-    else return {
+    if(!isCartEmpty){
+        let cartData = await knex("user_carts")
+        .first()
+        .where({
+            user_id: sessionData.id
+        })
+        .then((cart, err) => {
+            if(err || cart === undefined) return false;
+            else return cart;
+        })
+    
+        cartData.items = await knex
+        .select()
+        .from("cart_items")
+        .where({
+            cart_id: cartData.id
+        })
+        .then((items, err) => (err) ? [] : items);
+    
+        if(cartData) return {
+            statusCode: 200,
+            response: cartData
+        };
+        else return {
+            statusCode: 200,
+            response: false
+        };
+    }
+    else return{
         statusCode: 200,
         response: false
     };
+
 };
 
 /* 
@@ -475,23 +506,45 @@ module.exports.incrementCartItem = async (sessionData, productId) => {
                         cart_id: cart.id,
                         product_id: productId
                     })
-                    .then((saved, err) => {
+                    .then((isCartItemsIncremented, err) => {
                         if(err) return {
                             statusCode: 500,
                             response: false
                         };
-                        else{
-                            if(saved !== 0) return {
-                                statusCode: 201,
-                                response: true
-                            };
-                            else return {
-                                statusCode: 404,
+                        else {
+                            if(isCartItemsIncremented !== 0){
+                                return knex("user_carts")
+                                .increment({
+                                    total_amount: product.price
+                                })
+                                .where({
+                                    user_id: sessionData.id
+                                })
+                                .then((isTotalAmountIncremented, err) => {
+                                    if(err) return {
+                                        statusCode: 500,
+                                        response: false
+                                    };
+                                    else {
+                                        if(isTotalAmountIncremented !== 0) return {
+                                            statusCode: 200,
+                                            response: true
+                                        };
+                                        else return{
+                                            statusCode: 200,
+                                            response: false
+                                        };
+                                    }
+                                });
+                            }
+                            else return{
+                                statusCode: 400,
                                 response: false
                             };
-                        }
+                        };
                     });
                 }
+
                 else return {
                     // If cart is not found
                     statusCode: 404,
@@ -548,16 +601,37 @@ module.exports.decrementCartItem = async (sessionData, productId) => {
                         product_id: productId,
                     })
                     .andWhere("product_quantity", ">", 1)
-                    .then((saved, err) => {
+                    .then((isDecremented, err) => {
                         if(err) return {
                             statusCode: 500,
                             response: false
                         };
                         else{
-                            if(saved !== 0) return {
-                                statusCode: 201,
-                                response: true
-                            };
+                            if(isDecremented !== 0) {
+                                return knex("user_carts")
+                                .decrement({
+                                    total_amount: product.price
+                                })
+                                .where({
+                                    user_id: sessionData.id
+                                })
+                                .then((isDecreased, err) => {
+                                    if(err) return {
+                                        statusCode: 500,
+                                        response: false
+                                    };
+                                    else{
+                                        if(isDecreased !== 0) return{
+                                            statusCode: 200,
+                                            response: true
+                                        };
+                                        else return{
+                                            statusCode: 200,
+                                            response: false
+                                        };
+                                    }
+                                });
+                            }
                             else return {
                                 statusCode: 404,
                                 response: false
@@ -585,34 +659,85 @@ module.exports.decrementCartItem = async (sessionData, productId) => {
     2. Find the product data from the cart data.
     3. If found, remove the product data from the "cart_items" table
 */
-module.exports.removeItemInCart = (sessionData, productId) => {
-    return knex("user_carts")
+module.exports.removeItemInCart = async (sessionData, productId) => {
+    const product = await knex("products")
     .first()
     .where({
-        user_id: sessionData.id
+        id: productId
     })
-    .then((cart, err) => {
-        if(err) return {
-            statusCode: 500,
-            response: false
-        };
-        else{
-            return knex("cart_items")
-            .del()
-            .where({
-                product_id: productId,
-                cart_id: cart.id
-            })
-            .then((deleted, err) => {
-                if(err || deleted === 0) return {
-                    statusCode: 500,
-                    response: false
-                };
-                else return{
-                    statusCode: 200,
-                    response: true
-                };
-            })
-        }
+    .then((data, err) => {
+        if(err || data === undefined) return false;
+        else return data;
     });
+
+    if(product){
+        const isTotalAmountDecreased = await knex("user_carts")
+        .first()
+        .where({
+            user_id: sessionData.id
+        })
+        .then((cart, err) => {
+            if(err || cart === undefined) return false;
+            else{
+                let subtotal = 0;
+                return knex("cart_items")
+                .first()
+                .where({
+                    product_id: productId,
+                    cart_id: cart.id
+                })
+                .then((item, err) => {
+                    if(err || item === undefined) return false;
+                    else {
+                        subtotal = item.product_subtotal;
+                        return knex("user_carts")
+                        .decrement({
+                            total_amount: subtotal
+                        })
+                        .where({
+                            user_id: cart.user_id
+                        })
+                        .then((saved, err) => {
+                            if(err || saved === 0) return false;
+                            else return true;
+                        });
+                    }
+                });
+            }
+        });
+
+        const isCartItemDeleted = await knex("user_carts")
+        .first()
+        .where({
+            user_id: sessionData.id
+        })
+        .then((cart, err) => {
+            if(err) return false;
+            else{
+                return knex("cart_items")
+                .del()
+                .where({
+                    product_id: productId,
+                    cart_id: cart.id
+                })
+                .then((deleted, err) => {
+                    if(err || deleted === 0) return false;
+                    else return true;
+                })
+            }
+        });
+
+        if(isTotalAmountDecreased && isCartItemDeleted) return {
+            statusCode: 200,
+            response: true
+        };
+        else return{
+            statusCode: 200,
+            response: false 
+        };
+    }
+    else return {
+        statusCode: 400,
+        response: false
+    };
 };

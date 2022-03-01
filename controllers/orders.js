@@ -44,7 +44,7 @@ module.exports.viewOrdersFromUser = async (sessionData) => {
 };
 
 /* 
-    Order a product
+    Order a single product
     Business Logic:
     1. Gather the product information by product ID.
     2. Check if the item is in stock/active or not. If item not in stock, return false.
@@ -149,7 +149,7 @@ module.exports.viewAllOrders = async (sessionData) => {
         statusCode: 500,
         response: false
     };
-    
+
     let orderData = await knex
     .select()
     .from("orders")
@@ -177,5 +177,123 @@ module.exports.viewAllOrders = async (sessionData) => {
     return {
         statusCode: 200,
         response: orderData
+    };
+};
+
+/* 
+    Checkout items from cart
+    Business Logic:
+    1. Get the cart data from the cart_items and user_carts table that matches the authenticated user ID. If empty return false.
+    2. Create the order data.
+    3. Find the newly-created order data and for every item in the cart save them into the order_items table.
+*/
+module.exports.checkoutFromCart = async (sessionData) => {
+    const isCartEmpty = await knex("user_carts")
+    .first()
+    .where({
+        user_id: sessionData.id
+    })
+    .then((cart, err) => {
+        if(err || cart === undefined) return true;
+        else return false;
+    });
+    console.log(isCartEmpty);
+
+    if(!isCartEmpty){
+        const cartData = await knex("user_carts")
+        .first()
+        .where({
+            user_id: sessionData.id
+        })
+        .then(cart => cart);
+        
+        const cartItemsData = await knex
+        .select()
+        .from("cart_items")
+        .where({
+            cart_id: cartData.id
+        })
+        .then(items => items);
+
+        const isOrderCreated = await knex("orders")
+        .insert({
+            user_id: sessionData.id,
+            total_amount: cartData.total_amount
+        })
+        .then((saved, err) => {
+            if(err || saved === 0) return false;
+            else return true;
+        });
+
+        const isOrderItemsCreated = await knex
+        .select()
+        .from("orders")
+        .where({
+            user_id: sessionData.id
+        })
+        .then((order, err) => {
+            if(err || order.length === 0) return false;
+            else{
+                let areItemsSaved = false;
+                cartItemsData.map(item => {
+                    areItemsSaved = knex("order_items")
+                    .insert({
+                        order_id: order[order.length - 1].id,
+                        product_id: item.product_id,
+                        product_name: item.product_name,
+                        product_quantity: item.product_quantity,
+                        product_price: item.product_price,
+                        product_subtotal: item.product_subtotal
+                    })
+                    .then((saved , err) => {
+                        if(err) return false;
+                        else return true;
+                    });
+                });
+                return areItemsSaved;
+            }
+        });
+
+        // Clear cart and cart items
+        const isCartItemsCleared = await knex("cart_items")
+        .del()
+        .where({
+            cart_id: cartData.id
+        })
+        .then((isDeleted, err) => {
+            if(err || isDeleted === 0) return false;
+            else return true;
+        });
+
+        const isCartDeleted = await knex("user_carts")
+        .del()
+        .where({
+            id: cartData.id
+        })
+        .then((isDeleted, err) => {
+            if(err || isDeleted === 0) return false;
+            else return true;
+        });
+        console.log(`isOrderCreated ${isOrderCreated}`);
+        console.log(`isOrderItemsCreated ${isOrderItemsCreated}`);
+        console.log(`isCartItemsCleared ${isCartItemsCleared}`);
+        console.log(`isCartDeleted ${isCartDeleted}`);
+        if(
+            isOrderCreated &&
+            isOrderItemsCreated &&
+            isCartItemsCleared &&
+            isCartDeleted
+        ) return{
+            statusCode: 200,
+            response: true
+        };
+        else return{
+            statusCode: 200,
+            response: false
+        };
+    }
+    else return{
+        statusCode: 400,
+        response: false
     };
 };

@@ -42,6 +42,7 @@ exports.up = function(knex) {
     .createTable("user_carts", table => {
         table.increments("id").primary();
         table.integer("user_id").notNullable().references("id").inTable("users");
+        table.float("total_amount").notNullable();
         table.timestamp("created_at").defaultTo(knex.fn.now());
         table.timestamp("updated_at").defaultTo(knex.fn.now());
     })

@@ -21,4 +21,10 @@ router.get("/all", auth.verify, (req, res) => {
     orderController.viewAllOrders(sessionData).then(result => res.status(result.statusCode).send(result.response));
 });
 
+// Route for checking out items in the cart
+router.post("/checkoutcart", auth.verify, (req, res) => {
+    const sessionData = auth.decode(req.headers.authorization);
+    orderController.checkoutFromCart(sessionData).then(result => res.status(result.statusCode).send(result.response));
+});
+
 module.exports = router;
