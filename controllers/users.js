@@ -134,41 +134,67 @@ module.exports.loginUser = (reqBody) => {
     1. Get the orders from the user and the products the user has ordered.
     2. Get the cart items from the user.
 */
-module.exports.getProfile = (sessionData) => {
-    return knex
-    .select("users.id", "users.email", "users.is_admin", "users.created_at", "users.updated_at", "orders.*", "order_items.*")
+module.exports.getProfile = async (sessionData) => {
+    let userData = await knex
+    .first("id", "email", "is_admin", "created_at", "updated_at")
     .from("users")
     .where({
-        "users.id": sessionData.id
+        id: sessionData.id
     })
-    .join("orders", {
-        "orders.user_id": "users.id"
+    .then(user => user);
+    
+    let orderData = await knex
+    .select()
+    .from("orders")
+    .where({
+        user_id: sessionData.id
     })
-    .join("order_items", {
-        "order_items.order_id": "orders.id"
+    .then(order => order);
+
+    let orderItems = await knex
+    .select()
+    .from("order_items")
+    .then(item => item);
+
+    let cartData = await knex
+    .select()
+    .from("user_carts")
+    .where({
+        user_id: sessionData.id
     })
-    .then((user, err) => {
-        if(err){
-            return {
-                statusCode: 500,
-                response: false
-            };
-        }
-        else{
-            if(user.length !== 0){
-                return {
-                    statusCode: 200,
-                    response: user
-                };
-            }
-            else{
-                return {
-                    statusCode: 404,
-                    response: false
-                };
-            }
-        }
-    });
+    .then(cart => cart);
+    console.log(cartData);
+
+    let cartItems = await knex
+    .select()
+    .from("cart_items")
+    .then(item => item);
+
+    if(orderData.length > 0){
+        orderData.map(order => {
+            order.items = [];
+            orderItems.map(item => {
+                if(item.order_id === order.id) order.items.push(item);
+            });
+        });
+    }
+
+    if(cartData.length > 0){
+        cartData.map(cart => {
+            cart.items = [];
+            cartItems.map(item => {
+                if(item.cart_id === cart.id) cart.items.push(item);
+            });
+        })
+    }
+
+    userData.orders = orderData;
+    userData.cart = cartData;
+
+    return {
+        statusCode: 200,
+        response: userData
+    };
 };
 
 /* 

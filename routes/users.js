@@ -16,6 +16,7 @@ router.post("/login", (req, res) => userController.loginUser(req.body).then(resu
 router.get("/details", auth.verify, (req, res) => {
     const sessionData = auth.decode(req.headers.authorization);
     userController.getProfile(sessionData).then(result => res.status(result.statusCode).send(result.response));
+    // userController.getProfile(sessionData).then(result => res.send(result));
 });
 
 // Route for changing password
