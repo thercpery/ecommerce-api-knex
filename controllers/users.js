@@ -163,7 +163,6 @@ module.exports.getProfile = async (sessionData) => {
         user_id: sessionData.id
     })
     .then(cart => cart);
-    console.log(cartData);
 
     let cartItems = await knex
     .select()

@@ -197,7 +197,6 @@ module.exports.checkoutFromCart = async (sessionData) => {
         if(err || cart === undefined) return true;
         else return false;
     });
-    console.log(isCartEmpty);
 
     if(!isCartEmpty){
         const cartData = await knex("user_carts")
@@ -274,10 +273,6 @@ module.exports.checkoutFromCart = async (sessionData) => {
             if(err || isDeleted === 0) return false;
             else return true;
         });
-        console.log(`isOrderCreated ${isOrderCreated}`);
-        console.log(`isOrderItemsCreated ${isOrderItemsCreated}`);
-        console.log(`isCartItemsCleared ${isCartItemsCleared}`);
-        console.log(`isCartDeleted ${isCartDeleted}`);
         if(
             isOrderCreated &&
             isOrderItemsCreated &&
