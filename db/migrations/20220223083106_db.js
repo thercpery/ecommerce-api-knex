@@ -9,6 +9,7 @@ exports.up = function(knex) {
         table.string("name").notNullable();
         table.text("description").notNullable();
         table.float("price").notNullable();
+        // table.integer("quantity").notNullable(); // TODO: refactor everything with a quantity column
         table.boolean("is_active").defaultTo(true);
         table.timestamp("created_at").defaultTo(knex.fn.now());
         table.timestamp("updated_at").defaultTo(knex.fn.now());

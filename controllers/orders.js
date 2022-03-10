@@ -292,3 +292,9 @@ module.exports.checkoutFromCart = async (sessionData) => {
         response: false
     };
 };
+
+/* 
+    TODO:
+    1. Hot products/featured products section within the past 30 days.
+    2. Refactor code with quantity column.
+*/

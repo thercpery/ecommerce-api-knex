@@ -752,10 +752,32 @@ module.exports.removeItemInCart = async (sessionData, productId) => {
             }
         });
 
-        if(isTotalAmountDecreased && isCartItemDeleted) return {
-            statusCode: 200,
-            response: true
-        };
+        if(isTotalAmountDecreased && isCartItemDeleted) {
+            const cartData = await this.viewCartItems(sessionData);
+            if(cartData.response.items.length === 0){
+                // If cart items are empty remove the cart from the database
+                return knex("user_carts")
+                .del()
+                .where({
+                    user_id: sessionData.id
+                })
+                .then((deleted, err) => {
+                    if(err || deleted === 0) return {
+                        statusCode: 500,
+                        response: false
+                    };
+                    else return {
+                        statusCode: 201,
+                        response: true
+                    };
+                });
+            }
+            else return{
+                // If cartData.items is not empty
+                statusCode: 201,
+                response: true
+            };
+        }
         else return{
             statusCode: 200,
             response: false 
