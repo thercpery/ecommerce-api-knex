@@ -166,7 +166,18 @@ module.exports.viewAllOrders = async (sessionData) => {
         else return items;
     });
 
+    let userData = await knex
+    .select("id", "email")
+    .from("users")
+    .then((users, err) => {
+        if(err) return false;
+        else return users;
+    });
+
+
     orderData.map(order => {
+        const user = userData.filter(user => user.id === order.user_id)[0];
+        order.user_email = user.email;
         order.items = [];
         orderItems.map(item => {
             if(item.order_id === order.id) order.items.push(item);

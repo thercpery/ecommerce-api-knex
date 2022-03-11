@@ -16,6 +16,7 @@ exports.up = function(knex) {
     })
     .createTable("users", table => {
         table.increments("id").primary();
+        // table.string("username").notNullable(); // TODO: login thru username/email
         table.string("email").notNullable();
         table.string("password").notNullable();
         table.boolean("is_admin").defaultTo(false);
