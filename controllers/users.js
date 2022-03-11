@@ -788,3 +788,29 @@ module.exports.removeItemInCart = async (sessionData, productId) => {
         response: false
     };
 };
+
+/* 
+    View all users
+    Business Logic:
+    1. Get all the user data except the password.
+    2. If authenticated user is an admin, return the data. Else return false.
+*/
+module.exports.viewAllUsers = (sessionData) => {
+    return knex
+    .select("id", "email", "is_admin", "created_at")
+    .from("users")
+    .then((users, err) => {
+        if(err) return {
+            statusCode: 500,
+            response: false
+        };
+        else if(!sessionData.is_admin) return {
+            statusCode: 403,
+            response: false
+        };
+        else return {
+            statusCode: 200,
+            response: users
+        };
+    })
+};

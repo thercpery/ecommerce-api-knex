@@ -54,6 +54,12 @@ router.delete("/cart/:id/remove", auth.verify, (req, res) => {
     userController.removeItemInCart(sessionData, req.params.id).then(result => res.status(result.statusCode).send(result.response));
 });
 
+// Route for viewing all users
+router.get("/all", auth.verify, (req, res) => {
+    const sessionData = auth.decode(req.headers.authorization);
+    userController.viewAllUsers(sessionData).then(result => res.status(result.statusCode).send(result.response));
+});
+
 // Route for setting user as admin.
 router.patch("/:id/setasadmin", auth.verify, (req, res) => {
     const sessionData = auth.decode(req.headers.authorization);
