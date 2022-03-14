@@ -240,6 +240,35 @@ module.exports.updateProduct = (sessionData, productId, productData) => {
 };
 
 /* 
+    Search a product through a keyword
+    Business Logic:
+    1. Get the keyword from the request body.
+    2. Search the products data that matches the keyword (name, description).
+    3. Return all the data THAT IS IN STOCK.
+*/
+module.exports.searchProducts = (reqBody) => {
+    return knex
+    .select()
+    .from("products")
+    .where((builder) => {
+        builder
+        .where({is_active: true})
+        .where("name", "ilike", `%${reqBody.keyword}%`)
+        .orWhere("description", "ilike", `%${reqBody.keyword}%`)
+    })
+    .then((products, err) => {
+        if(err) return {
+            statusCode: 500,
+            response: false
+        };
+        else return{
+            statusCode: 200,
+            response: products
+        }; 
+    });
+};
+
+/* 
     TODO:
     1. Hot products/featured products section within the past 30 days.
     2. Refactor code with quantity column.

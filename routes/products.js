@@ -12,6 +12,9 @@ router.get("/all", auth.verify, (req, res) => {
     productController.viewAllProducts(sessionData).then(result => res.status(result.statusCode).send(result.response));
 });
 
+// Route for search products by keyword
+router.get("/search", (req, res) => productController.searchProducts(req.body).then(result => res.status(result.statusCode).send(result.response)));
+
 // Route for selling products
 router.post("/sell", auth.verify, (req, res) => {
     const sessionData = auth.decode(req.headers.authorization);
