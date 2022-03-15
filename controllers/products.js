@@ -246,15 +246,15 @@ module.exports.updateProduct = (sessionData, productId, productData) => {
     2. Search the products data that matches the keyword (name, description).
     3. Return all the data THAT IS IN STOCK.
 */
-module.exports.searchProducts = (reqBody) => {
+module.exports.searchProducts = (filter) => {
     return knex
     .select()
     .from("products")
     .where((builder) => {
         builder
         .where({is_active: true})
-        .where("name", "ilike", `%${reqBody.keyword}%`)
-        .orWhere("description", "ilike", `%${reqBody.keyword}%`)
+        .where("name", "ilike", `%${filter.keyword}%`)
+        .orWhere("description", "ilike", `%${filter.keyword}%`)
     })
     .then((products, err) => {
         if(err) return {
@@ -265,6 +265,40 @@ module.exports.searchProducts = (reqBody) => {
             statusCode: 200,
             response: products
         }; 
+    });
+};
+
+/* 
+    Search all products via keyword (admin only access).
+    Business Logic:
+    1. 1. Get the keyword from the request body.
+    2. Search the products data that matches the keyword (name, description).
+    3. Return all the data.
+*/
+module.exports.saerchAllProducts = (filter, sessionData) => {
+    return knex
+    .select()
+    .from("products")
+    .where((builder) => {
+        builder
+        .where("name", "ilike", `%${filter.keyword}%`)
+        .orWhere("description", "ilike", `%${filter.keyword}%`)
+    })
+    .then((products, err) => {
+        if(err) return {
+            statusCode: 500,
+            response: false
+        };
+        else {
+            if(sessionData.is_admin) return {
+                statusCode: 200,
+                response: products
+            };
+            else return {
+                statusCode: 403,
+                response: false
+            };
+        }
     });
 };
 
